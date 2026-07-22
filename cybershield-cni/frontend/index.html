@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CyberShield CNI — AI Cyber Resilience Dashboard</title>
+<link rel="stylesheet" href="/static/css/style.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+</head>
+<body>
+
+<!-- ======================= LOGIN SCREEN ======================= -->
+<div id="loginScreen" class="login-screen">
+  <form id="loginForm" class="login-card" autocomplete="off">
+    <div class="login-brand">
+      <span class="brand-mark">◈</span>
+      <div>
+        <h1>CyberShield CNI</h1>
+        <p>AI-Driven Cyber Resilience Platform</p>
+      </div>
+    </div>
+    <label>Username
+      <input type="text" id="loginUsername" required placeholder="Enter username" />
+    </label>
+    <label>Password
+      <input type="password" id="loginPassword" required placeholder="••••••••" />
+    </label>
+    <button type="submit" class="btn btn-primary login-submit">Sign in</button>
+    <div id="loginError" class="login-error" hidden></div>
+  </form>
+</div>
+
+<!-- ======================= DASHBOARD ======================= -->
+<div id="dashboardRoot" class="app-shell" hidden>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark">◈</span>
+    <div>
+      <h1>CyberShield CNI</h1>
+      <p>AI-Driven Cyber Resilience Platform — Critical National Infrastructure</p>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="scenario-controls">
+      <button class="btn btn-baseline" onclick="generateTelemetry(null)">▶ Normal Traffic</button>
+      <button class="btn btn-scenario" onclick="generateTelemetry('hospital_ransomware')">🏥 Hospital Ransomware</button>
+      <button class="btn btn-scenario" onclick="generateTelemetry('substation_probe')">⚡ Substation Probe</button>
+      <button class="btn btn-scenario" onclick="generateTelemetry('bulk_exfiltration')">📤 Data Exfiltration</button>
+      <button class="btn btn-scenario" onclick="generateTelemetry('brute_force')">🔑 Brute Force</button>
+      <button class="btn btn-scenario" onclick="generateTelemetry('ot_firmware_tamper')">🛠 Firmware Tamper</button>
+      <button class="btn btn-scenario" onclick="generateTelemetry('c2_beaconing')">📡 C2 Beaconing</button>
+    </div>
+    <div class="session-box">
+      <span class="live-dot" id="liveDot" title="Live feed status"></span>
+      <div class="session-user">
+        <span id="sessionName">—</span>
+        <span id="sessionRole" class="role-pill">—</span>
+      </div>
+      <button class="btn btn-logout" onclick="logout()">Sign out</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="kpi-row" id="kpiRow"></section>
+
+  <section class="grid-2">
+    <div class="panel">
+      <h2>Live Anomaly Score Feed</h2>
+      <canvas id="anomalyChart" height="140"></canvas>
+    </div>
+    <div class="panel">
+      <h2>MTTD: Traditional SOC vs CyberShield CNI</h2>
+      <canvas id="mttdChart" height="140"></canvas>
+    </div>
+  </section>
+
+  <section class="grid-2">
+    <div class="panel">
+      <div class="panel-header-row">
+        <h2>Active Alerts <span class="pill" id="alertCountPill">0</span></h2>
+        <div class="panel-controls">
+          <select id="alertStatusFilter" onchange="refreshAlerts()">
+            <option value="">All statuses</option>
+            <option value="open">Open</option>
+            <option value="awaiting_authorization">Awaiting authorization</option>
+            <option value="contained">Contained</option>
+            <option value="dismissed">Dismissed</option>
+          </select>
+          <select id="alertSeverityFilter" onchange="refreshAlerts()">
+            <option value="">All severities</option>
+            <option value="critical">Critical</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+          <a class="btn btn-export" href="/api/export/alerts.csv" download>⭳ CSV</a>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table id="alertsTable">
+          <thead>
+            <tr><th>Severity</th><th>Alert</th><th>MITRE</th><th>Zone</th><th>Status</th><th>Action</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-header-row">
+        <h2>Vulnerability Prioritisation Queue</h2>
+        <a class="btn btn-export" href="/api/export/vulnerabilities.csv" download>⭳ CSV</a>
+      </div>
+      <div class="table-wrap">
+        <table id="vulnTable">
+          <thead>
+            <tr><th>CVE</th><th>Asset</th><th>Risk</th><th>Exploit?</th><th>Campaign Match?</th><th>Status</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="grid-2">
+    <div class="panel">
+      <h2>MITRE ATT&amp;CK Technique Frequency</h2>
+      <canvas id="mitreChart" height="160"></canvas>
+    </div>
+    <div class="panel">
+      <h2>Cyber Resilience Digital Twin</h2>
+      <p class="hint">Click a node to simulate blast radius. Use the toggle to segment (isolate) a node — requires OT Operator or Admin.</p>
+      <svg id="twinSvg" viewBox="0 0 650 520"></svg>
+      <div id="blastResult" class="blast-result"></div>
+    </div>
+  </section>
+
+  <section class="grid-2">
+    <div class="panel">
+      <div class="panel-header-row">
+        <h2>Recent Telemetry Events</h2>
+        <div class="panel-controls">
+          <input type="text" id="eventEntityFilter" placeholder="filter entity…" oninput="debouncedRefreshEvents()" />
+          <select id="eventZoneFilter" onchange="refreshEvents()">
+            <option value="">All zones</option>
+            <option value="IT">IT</option>
+            <option value="OT">OT</option>
+          </select>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table id="eventsTable">
+          <thead>
+            <tr><th>Time</th><th>Zone</th><th>Entity</th><th>Type</th><th>Anomaly Score</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>Audit Log</h2>
+      <p class="hint">Every alert response and containment action, with the authenticated operator who performed it.</p>
+      <div class="table-wrap">
+        <table id="auditTable">
+          <thead>
+            <tr><th>Time</th><th>Actor</th><th>Role</th><th>Action</th><th>Target</th><th>Detail</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div id="toastContainer" class="toast-container"></div>
+
+<footer>
+  <p>Prototype for ET AI Hackathon 2026 · Problem Statement 7 · Passive OT monitoring only — OT containment always requires human authorization.</p>
+</footer>
+
+</div><!-- /dashboardRoot -->
+
+<script src="/static/js/app.js"></script>
+</body>
+</html>

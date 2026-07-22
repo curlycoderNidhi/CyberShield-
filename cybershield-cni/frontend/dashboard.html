@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>CyberShield CNI - Dashboard</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <div class="auth-wrapper">
+    <div class="auth-card">
+      <h1>Welcome</h1>
+      <p class="subtitle" id="welcome-msg">Loading...</p>
+      <button id="logout-btn" style="margin-top:20px;padding:11px;border:none;border-radius:6px;background:#14b8a6;color:#04211c;font-weight:600;cursor:pointer;">Log Out</button>
+    </div>
+  </div>
+  <script>
+    const token = localStorage.getItem("cybershield_token");
+    const user = localStorage.getItem("cybershield_user");
+    if (!token) {
+      window.location.href = "/index.html";
+    } else {
+      document.getElementById("welcome-msg").textContent = "Logged in as " + user;
+    }
+    document.getElementById("logout-btn").addEventListener("click", () => {
+      localStorage.removeItem("cybershield_token");
+      localStorage.removeItem("cybershield_user");
+      window.location.href = "/index.html";
+    });
+  </script>
+</body>
+</html>
